@@ -127,6 +127,7 @@ static tileidinfo const tileidmap[NTILES] = {
     { Boots_Fire,		 6,  9,  9,  9, TILEIMG_TRANSPCELS },
     { Boots_Water,		 6,  8,  9,  8, TILEIMG_TRANSPCELS },
     { Block_Static,		 0, 10, -1, -1, TILEIMG_IMPLICIT },
+    { IceBlock,			 3,  8, -1, -1, TILEIMG_SINGLEOPAQUE },
     { Overlay_Buffer,		 2,  0, -1, -1, TILEIMG_IMPLICIT },
     { Exit_Extra_1,		 3, 10, -1, -1, TILEIMG_SINGLEOPAQUE },
     { Exit_Extra_2,		 3, 11, -1, -1, TILEIMG_SINGLEOPAQUE },

@@ -86,7 +86,8 @@ enum
 
     Overlay_Buffer	= 0x3D,
 
-    Floor_Reserved2	= 0x3E,
+    IceBlock		= 0x3E,
+
     Floor_Reserved1	= 0x3F,
 
     Chip		= 0x40,
@@ -126,6 +127,7 @@ enum
 #define	isfloor(f)	((f) <= Floor_Reserved1)
 #define	iscreature(f)	((f) >= Chip && (f) < Water_Splash)
 #define	isanimation(f)	((f) >= Water_Splash && (f) <= Animation_Reserved1)
+#define isblock(f)	((f) == Block || (f) == IceBlock)
 
 /* Macro for getting the tile ID of a creature with a specific direction.
  */
