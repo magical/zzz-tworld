@@ -91,6 +91,29 @@ tworldres.o: tworld.ico
 # Other
 #
 
+dist: tworld.exe
+	rm -rf dist
+	mkdir -p dist
+	cp README dist/README.txt
+	cp Changelog dist/CHANGELOG.txt
+	cp COPYING dist/COPYING.txt
+	cp BUGS dist/BUGS.txt
+	cp /mingw/bin/SDL.dll dist
+	cp tworld.exe tworld.ico docs/tworld.html dist
+	cp -r data sets res dist
+
+preview-dist: tworld.exe
+	rm -rf dist
+	mkdir -p dist
+	cp README.iceblock.txt dist/README.txt
+	cp README-SDL.txt dist
+	cp COPYING dist/COPYING.txt
+	cp tworld.exe dist
+	cp /mingw/bin/SDL.dll dist
+	cp res/tiles.bmp dist
+	cp sets/icetest.ccl dist
+	cp iceblock.patch dist
+
 install: tworld
 	mkdir -p $(bindir)
 	mkdir -p $(sharedir)/sets
