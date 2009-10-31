@@ -73,6 +73,9 @@ err.o      : err.c oshw.h err.h
 comptime.h:
 	echo \#define COMPILE_TIME \"`date '+%Y %b %e %T %Z'`\" > comptime.h
 
+iceblock.patch: genpatch *.c *.h oshw/*.c oshw/*.h
+	./genpatch > iceblock.patch
+
 #
 # Libraries
 #
@@ -98,21 +101,20 @@ dist: tworld.exe
 	cp Changelog dist/CHANGELOG.txt
 	cp COPYING dist/COPYING.txt
 	cp BUGS dist/BUGS.txt
-	cp /mingw/bin/SDL.dll dist
+	cp SDL.dll dist
 	cp tworld.exe tworld.ico docs/tworld.html dist
 	cp -r data sets res dist
 
-preview-dist: tworld.exe
+preview-dist: tworld.exe iceblock.patch
 	rm -rf dist
 	mkdir -p dist
 	cp README.iceblock.txt dist/README.txt
-	cp README-SDL.txt dist
-	cp COPYING dist/COPYING.txt
+	cp README-SDL.txt COPYING.txt dist
 	cp tworld.exe dist
-	cp /mingw/bin/SDL.dll dist
-	cp res/tiles.bmp dist
-	cp sets/icetest.ccl dist
+	cp SDL.dll dist
 	cp iceblock.patch dist
+	cp res/tiles48.bmp dist/tiles.bmp
+	cp sets/icetest.ccl dist
 
 install: tworld
 	mkdir -p $(bindir)

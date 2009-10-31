@@ -1,0 +1,6 @@
+#!/bin/sh
+
+git="C:/Program Files/Git/bin/git.exe"
+firstrev=f421d81
+
+"$git" diff "$firstrev" `find . -name '*.[ch]'`
