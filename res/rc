@@ -14,7 +14,7 @@ BombSound=bomb.wav
 SplashSound=splash.wav
 
 [MS]
-TileImages=tiles.bmp
+TileImages=tiles32.bmp
 ChipDeathSound=death.wav
 ChipDeathByTimeSound=ding.wav
 TickSound=tick.wav
