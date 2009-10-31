@@ -86,7 +86,7 @@ enum
 
     Overlay_Buffer	= 0x3D,
 
-    IceBlock		= 0x3E,
+    IceBlock_Static	= 0x3E,
 
     Floor_Reserved1	= 0x3F,
 
@@ -107,7 +107,8 @@ enum
     Swimming_Chip	= 0x6C,
     Pushing_Chip	= 0x70,
 
-    Entity_Reserved2	= 0x74,
+    IceBlock		= 0x74,
+
     Entity_Reserved1	= 0x78,
 
     Water_Splash	= 0x7C,

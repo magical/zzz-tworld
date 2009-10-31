@@ -600,12 +600,16 @@ static creature *lookupblock(int pos)
     id = cellat(pos)->top.id;
     if (id == Block_Static)
 	cr->dir = NIL;
-    else if (id == IceBlock) {
+    else if (id == IceBlock_Static) {
 	cr->id = IceBlock;
 	cr->dir = NIL;
     }
     else if (creatureid(id) == Block)
 	cr->dir = creaturedirid(id);
+    else if (creatureid(id) == IceBlock) {
+	cr->id = IceBlock;
+	cr->dir = creaturedirid(id);
+    }
     else
 	_assert(!"lookupblock() called on blockless location");
 
@@ -639,7 +643,7 @@ static void updatecreature(creature const *cr)
 	    tile->id = crtile(Chip, NORTH);
 	return;
     } else if (id == IceBlock) {
-	tile->id = IceBlock;
+	tile->id = IceBlock_Static;
 	return;
     } else if (id == Chip) {
 	if (chipstatus()) {
@@ -680,21 +684,13 @@ static creature *awakencreature(int pos)
     int		tileid;
 
     tileid = cellat(pos)->top.id;
-    if (!iscreature(tileid) || tileid != IceBlock || creatureid(tileid) == Chip)
+    if (!iscreature(tileid) || creatureid(tileid) == Chip)
 	return NULL;
-    if (tileid == IceBlock)
-	{
-	new = allocatecreature();
-	new->id = IceBlock;
-	new->dir = NIL;
-	new->pos = pos;
-	return addtoblocklist(new);
-	}
     new = allocatecreature();
     new->id = creatureid(tileid);
     new->dir = creaturedirid(tileid);
     new->pos = pos;
-    return new->id == Block ? addtoblocklist(new) : addtocreaturelist(new);
+    return isblock(new->id) ? addtoblocklist(new) : addtocreaturelist(new);
 }
 
 /* Mark a creature as dead.
@@ -756,7 +752,7 @@ static void startfloormovement(creature *cr, int floor)
 	dir = getslidedir(floor);
     else if (floor == Teleport)
 	dir = cr->dir;
-    else if (floor == Beartrap && (cr->id == Block || cr->id == IceBlock))
+    else if (floor == Beartrap && isblock(cr->id))
 	dir = cr->dir;
     else
 	return;
@@ -875,7 +871,7 @@ static struct { unsigned char chip, block, creature; } const movelaws[] = {
     /* Exit_Extra_1 */		{ 0, 0, 0 },
     /* Exit_Extra_2 */		{ 0, 0, 0 },
     /* Overlay_Buffer */	{ 0, 0, 0 },
-    /* IceBlock */		{ NWSE, 0, NWSE },
+    /* IceBlock_Static */	{ NWSE, 0, 0 },
     /* Floor_Reserved1 */	{ 0, 0, 0 },
 };
 
@@ -907,7 +903,7 @@ static int pushblock(int pos, int dir, int flags)
     creature   *cr;
     int		slipdir, r;
 
-    _assert(cellat(pos)->top.id == Block_Static || cellat(pos)->top.id == IceBlock);
+    _assert(cellat(pos)->top.id == Block_Static || cellat(pos)->top.id == IceBlock_Static);
     _assert(dir != NIL);
 
     cr = lookupblock(pos);
@@ -992,7 +988,7 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	    return FALSE;
 	if (iscreature(cellat(to)->top.id)) {
 	    id = creatureid(cellat(to)->top.id);
-	    if (id == Chip || id == Swimming_Chip || id == Block)
+	    if (id == Chip || id == Swimming_Chip || isblock(id))
 		return FALSE;
 	}
 	if (floor == HiddenWall_Temp || floor == BlueWall_Real) {
@@ -1010,7 +1006,7 @@ static int canmakemove(creature const *cr, int dir, int flags)
 		    return TRUE;
 	    return canmakemove(cr, dir, flags | CMM_NOPUSHING);
 	}
-	if (floor == IceBlock) {
+	if (floor == IceBlock_Static) {
 	    if (!pushblock(to, dir, flags))
 		return FALSE;
 	    else if (flags & CMM_NOPUSHING)
@@ -1027,15 +1023,15 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	    return FALSE;
     } else if (cr->id == IceBlock) {
 	floor = cellat(to)->top.id;
-	if ((flags & CMM_TELEPORTPUSH) && floor == IceBlock) {
+	if ((flags & CMM_TELEPORTPUSH) && floor == IceBlock_Static) {
 	    return FALSE;
 	}
 	if (iscreature(floor)) {
 	    id = creatureid(floor);
 	    return id == Chip || id == Swimming_Chip;
 	}
-	if (floor == IceBlock) {
-	    return pushblock(to, dir, flags);
+	if (floor == IceBlock_Static) {
+	    return pushblock(to, dir, flags | CMM_NODEFERBUTTONS);
 	}
 	if (floor == Dirt) {
 	    return TRUE;
@@ -1060,18 +1056,17 @@ static int canmakemove(creature const *cr, int dir, int flags)
 		return TRUE;
 	    return FALSE;
 	}
+	if (floor == IceBlock_Static && (cr->id == Teeth || (cr->id == Tank))) {
+	    return pushblock(to, dir, CMM_NODEFERBUTTONS);
+	}
 	if (!(movelaws[floor].creature & dir))
 	    return FALSE;
 	if (floor == Fire && (cr->id == Bug || cr->id == Walker))
 	    return FALSE;
-	if (floor == IceBlock && (cr->id == Teeth || (cr->id == Tank))) {
-	    return pushblock(to, dir, 0);
-	}
     }
 
     if (cellat(to)->bot.id == CloneMachine)
 	return FALSE;
-    //if (cellat(to)->top.id == IceBlock && cellat(to)->bot.id ==
 
     return TRUE;
 }
@@ -1097,7 +1092,7 @@ static void choosecreaturemove(creature *cr)
 
     if (cr->hidden)
 	return;
-    if (cr->id == Block || cr->id == IceBlock)
+    if (isblock(cr->id))
 	return;
     if (currenttime() & 2)
 	return;
@@ -1419,6 +1414,18 @@ static void activatecloner(int buttonpos)
 	cr = lookupblock(pos);
 	if (cr->dir != NIL)
 	    advancecreature(cr, cr->dir);
+    } else if (creatureid(tileid) == IceBlock) {
+	if (cellat(pos)->bot.state & FS_CLONING)
+	    return;
+	cr = lookupblock(pos);
+	if (cr->dir != NIL) {
+	    if (cellat(pos)->bot.id == CloneMachine)
+		cellat(pos)->bot.state |= FS_CLONING;
+	    advancecreature(cr, cr->dir);
+	    if (cellat(pos)->bot.id == CloneMachine)
+		cellat(pos)->bot.state &= ~FS_CLONING;
+	}
+
     } else {
 	if (cellat(pos)->bot.state & FS_CLONING)
 	    return;
@@ -1453,7 +1460,7 @@ static void springtrap(int buttonpos)
 	return;
     }
     id = cellat(pos)->top.id;
-    if (id == Block_Static || id == IceBlock
+    if (id == Block_Static || id == IceBlock_Static
 	                   || (cellat(pos)->bot.state & FS_HASMUTANT)) {
 	cr = lookupblock(pos);
 	if (cr)
@@ -1689,7 +1696,7 @@ static void endmovement(creature *cr, int dir)
 	    dead = TRUE;
 	    addsoundeffect(SND_BOMB_EXPLODES);
 	    break;
-	  case IceBlock:
+	  case IceBlock_Static:
 	    {
 	    creature *cr2 = lookupblock(newpos);
 	    endmovement(cr2, dir);
@@ -1832,7 +1839,7 @@ static void endmovement(creature *cr, int dir)
 	startfloormovement(cr, floor);
     else if (isslide(floor) && (cr->id != Chip || !possession(Boots_Slide)))
 	startfloormovement(cr, floor);
-    else if (floor == Beartrap && (cr->id == Block || cr->id == IceBlock) && wasslipping) {
+    else if (floor == Beartrap && isblock(cr->id) && wasslipping) {
 	startfloormovement(cr, floor);
 	if (cr->state & CS_MUTANT)
 	    cell->bot.state |= FS_HASMUTANT;
@@ -2035,7 +2042,7 @@ static void verifymap(void)
 	    warn("%d: Creature %02X has left the map: (%d %d)",
 		 state->currenttime, cr->id,
 		 cr->pos % CXGRID, cr->pos / CXGRID);
-	if (cr->dir > EAST && (cr->dir != NIL || cr->id != Block))
+	if (cr->dir > EAST && (cr->dir != NIL || !isblock(cr->id)))
 	    warn("%d: Creature %d lacks direction (%d)",
 		 state->currenttime, cr->id, cr->dir);
     }
@@ -2158,6 +2165,14 @@ static int initgame(gamelogic *logic)
 		cell->bot.state |= FS_BROKEN;
     }
 
+    for (pos = 0, cell = state->map ; pos < CXGRID * CYGRID ; ++pos, ++cell) {
+	if (creatureid(cell->bot.id) == Block
+		    && cell->top.id == IceBlock_Static) {
+	    cell->top.id = crtile(IceBlock, creaturedirid(cell->bot.id));
+	    cell->bot.id = CloneMachine;
+	}
+    }
+
     chip = allocatecreature();
     chip->pos = 0;
     chip->id = Chip;
@@ -2176,7 +2191,7 @@ static int initgame(gamelogic *logic)
 		 num, pos % CXGRID, pos / CXGRID);
 	    continue;
 	}
-	if (creatureid(cell->top.id) != Block && cell->top.id != IceBlock
+	if (!isblock(creatureid(cell->top.id))
 				&& cell->bot.id != CloneMachine) {
 	    cr = allocatecreature();
 	    cr->pos = pos;
