@@ -1,10 +1,11 @@
-This is a preview release of the Ice Block for Tile World.
+This is the second preview release of the Ice Block for Tile World. The major
+difference from the previous release is that cloning mostly works now.
 
 Files
 -----
 
 tworld.exe - The modified Tile World executable
-SDL.dll    - The latest version of the SDL library. No, my modified tworld.exe
+SDL.dll    - The version 1.2.14 of the SDL library. No, my modified tworld.exe
              will not work with the version that comes with Tile World 1.3.0
 
 tiles.bmp   - Modified tileset which includes the ice block.
@@ -17,8 +18,7 @@ In Short
 --------
 
 Make a new Tile World directory; replace `tworld.exe`, `SDL.dll`, and
-`tiles.bmp`. The Ice Block does everything it should except clone. Please post
-bug reports to the newsgroup.
+`tiles.bmp`. Cloning works now. Please post bug reports to the newsgroup.
 
 
 About the Patch
@@ -32,15 +32,11 @@ a normal dirt block, but with the following differences:
   - It destroys Dirt
   - Tanks and Teeth can push it
 
-There is one major deficiency, which is that you cannot yet clone Ice Blocks.
-I mentioned that this is a preview release, right? That's why. It *will* be
-fixed.
+This patch should exhibit the same behaviour as [pieguy's patch][1] for MSCC.
+I know of a few cases where it does not, mostly involving cloning. If you find
+a case where my patch and pieguy's patch differ, please post a bug report to 
+the [Chip's Challenge newsgroup][2].
 
-In all other ways, this patch should exhibit the same behaviour as
-[pieguy's patch][1] for MSCC.
-
-Please send bug reports to the [Chip's Challenge newsgroup][2]. I am interested
-in corner cases.
 
 [1]: <http://www.ecst.csuchico.edu/~pieguy/chips/patches/pgchip.html>
 [2]: <news://news.annexcafe.com/annexcafe.chips.challenge>
