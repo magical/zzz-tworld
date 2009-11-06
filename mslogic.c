@@ -1569,8 +1569,7 @@ static int startmovement(creature *cr, int dir, int flags)
     }
     cr->state &= ~CS_RELEASED;
 
-    if (cr->id != Tank)
-	cr->dir = dir;
+    cr->dir = dir;
 
     return TRUE;
 }
@@ -1812,8 +1811,6 @@ static void endmovement(creature *cr, int dir, int flags)
 	break;
     }
 
-    if (cr->id == Tank && !(cr->state & CS_TURNING))
-	cr->dir = dir;
     cr->pos = newpos;
 
     if (cellat(oldpos)->bot.id == CloneMachine)
