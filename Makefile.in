@@ -109,11 +109,13 @@ preview-dist: tworld.exe iceblock.patch
 	rm -rf dist
 	mkdir -p dist
 	cp README.iceblock.txt dist/README.txt
-	cp README-SDL.txt COPYING.txt dist
+	cp README-SDL.txt dist
+	cp COPYING.txt dist
 	cp tworld.exe dist
 	cp SDL.dll dist
 	cp iceblock.patch dist
 	cp res/tiles48.bmp dist/tiles.bmp
+	cp res/tiles32.bmp dist
 	cp sets/icetest.ccl dist
 
 install: tworld

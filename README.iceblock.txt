@@ -1,5 +1,20 @@
-This is the second preview release of the Ice Block for Tile World. The major
-difference from the previous release is that cloning mostly works now.
+This is the third preview release of the Ice Block for Tile World.
+
+What's new?
+-----------
+
+The major new thing this release is that button presses are handled correctly.
+
+It also fixes two bugs:
+  + when an ice block is in front of a teeth/tank cloner, cloning should fail.
+  + if a teeth pushes an ice block off of gravel or a thin panel, it may make
+    another move.
+
+...and adds another:
+  + in ms, a walker/bug will choose a teleport that is blocked by fire, and
+    subsequently get stuck on it.
+
+Thanks to pieguy for reporting the three bugs.
 
 Files
 -----
@@ -9,16 +24,20 @@ SDL.dll    - The version 1.2.14 of the SDL library. No, my modified tworld.exe
              will not work with the version that comes with Tile World 1.3.0
 
 tiles.bmp   - Modified tileset which includes the ice block.
+tiles32.bmp - 32x32 tileset with iceblock.
 icetest.ccl - A levelset to help test if the ice block is working properly.
               Note: most of the levels do not have an exit.
 
 iceblock.patch - The modifications I made to Tile World.
 
-In Short
---------
+
+Setup, in Short
+---------------
 
 Make a new Tile World directory; replace `tworld.exe`, `SDL.dll`, and
-`tiles.bmp`. Cloning works now. Please post bug reports to the newsgroup.
+`tiles.bmp`. Buttons work now. Please post bug reports to the newsgroup.
+
+For more detailed instructions, see below.
 
 
 About the Patch
@@ -40,6 +59,7 @@ the [Chip's Challenge newsgroup][2].
 
 [1]: <http://www.ecst.csuchico.edu/~pieguy/chips/patches/pgchip.html>
 [2]: <news://news.annexcafe.com/annexcafe.chips.challenge>
+
 
 Running on Windows
 ------------------
@@ -89,13 +109,13 @@ can download it from the [SDL homepage][3]. Be sure to get the one labeled
   2. cd to the directory of the source code and apply the patch
         
         $ cd /path/to/tworld-1.3.0
-        $ patch -p1 < /path/to/iceblockzip/iceblock.patch
+        $ patch -p1 < /path/to/this/patch/iceblock.patch
 
   3. copy the modified graphics to the `res` directory, and optionally copy
     `icetest.ccl` to the `sets` directory.
 
-        $ cp /path/to/iceblockzip/tiles.bmp ./res
-        $ cp /path/to/iceblockzip/icetest.ccl ./sets
+        $ cp /path/to/this/patch/tiles.bmp ./res
+        $ cp /path/to/this/patch/icetest.ccl ./sets
 
   4. build
         
@@ -117,7 +137,7 @@ the game themselves.
 
 That being said, in accordance with the terms of the GPL, anyone who wishes
 may contact me to ask for a complete copy of the source code, and I will
-comply.
+comply. My email address is <a_magical_me@comcast.net>.
 
 Rest assured that when the patch has been completed to my satisfation, I will
 post a full source distribution online. Unless, of course, Brian Raiter
