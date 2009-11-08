@@ -151,6 +151,14 @@ typedef	struct slipper {
     int		dir;
 } slipper;
 
+/* The data associated with a deferred button.
+ */
+typedef struct deferredbutton {
+    short pos;
+    unsigned char id;
+} deferredbutton;
+
+
 /* The linked list of creature pools, forming the creature arena.
  */
 static creature	       *creaturepool = NULL;
@@ -174,6 +182,12 @@ static int		blocksallocated = 0;
 static slipper	       *slips = NULL;
 static int		slipcount = 0;
 static int		slipsallocated = 0;
+
+/* The stack of deferred button presses.
+ */
+static deferredbutton  *defers = NULL;
+static int		defercount = 0;
+static int		defersallocated = 0;
 
 /* Mark all entries in the creature arena as unused.
  */
@@ -367,17 +381,42 @@ static void removefromsliplist(creature *cr)
 	slips[n] = slips[n + 1];
 }
 
+void resetdeferstack()
+{
+    defercount = 0;
+}
+
+void pushdeferstack(int pos, unsigned char id)
+{
+    if (defercount >= defersallocated) {
+	defersallocated = defersallocated ? defersallocated * 2 : 16;
+	defers = realloc(defers, defersallocated * sizeof *defers);
+	if (!defers)
+	    memerrexit();
+    }
+    defers[defercount].pos = pos;
+    defers[defercount].id = id;
+    ++defercount;
+}
+
+deferredbutton *popdeferstack()
+{
+    if (defercount <= 0)
+	return NULL;
+
+    return &defers[--defercount];
+}
+
 /*
  * Simple floor functions.
  */
 
 /* Floor state flags.
  */
-#define	FS_BUTTONDOWN		0x01	/* button press is deferred */
-#define	FS_CLONING		0x02	/* clone machine is activated */
-#define	FS_BROKEN		0x04	/* teleport/toggle wall doesn't work */
-#define	FS_HASMUTANT		0x08	/* beartrap contains mutant block */
-#define	FS_MARKER		0x10	/* marker used during initialization */
+#define	FS_CLONING		0x01	/* clone machine is activated */
+#define	FS_BROKEN		0x02	/* teleport/toggle wall doesn't work */
+#define	FS_HASMUTANT		0x04	/* beartrap contains mutant block */
+#define	FS_MARKER		0x08	/* marker used during initialization */
 
 /* Translate a slide floor into the direction it points in. In the
  * case of a random slide floor, a new direction is selected.
@@ -1436,8 +1475,6 @@ static void activatecloner(int buttonpos)
 	    if (cellat(pos)->bot.id == CloneMachine)
 		cellat(pos)->bot.state |= FS_CLONING;
 	    advancecreature(cr, cr->dir, 0);
-	    //if (canmakemove(cr, cr->dir, CMM_NOPUSHING | CMM_NODEFERBUTTONS))
-	    //	  endmovement(cr, cr->dir, flags);
 	    if (cellat(pos)->bot.id == CloneMachine)
 		cellat(pos)->bot.state &= ~FS_CLONING;
 	}
@@ -1491,31 +1528,17 @@ static void springtrap(int buttonpos)
  */
 static void resetbuttons(void)
 {
-    int	pos;
-
-    for (pos = 0 ; pos < CXGRID * CYGRID ; ++pos) {
-	cellat(pos)->top.state &= ~FS_BUTTONDOWN;
-	cellat(pos)->bot.state &= ~FS_BUTTONDOWN;
-    }
+    resetdeferstack();
 }
 
 /* Apply the effects of all deferred button presses, if any.
  */
 static void handlebuttons(void)
 {
-    int	pos, id;
+    deferredbutton *button;
 
-    for (pos = 0 ; pos < CXGRID * CYGRID ; ++pos) {
-	if (cellat(pos)->top.state & FS_BUTTONDOWN) {
-	    cellat(pos)->top.state &= ~FS_BUTTONDOWN;
-	    id = cellat(pos)->top.id;
-	} else if (cellat(pos)->bot.state & FS_BUTTONDOWN) {
-	    cellat(pos)->bot.state &= ~FS_BUTTONDOWN;
-	    id = cellat(pos)->bot.id;
-	} else {
-	    continue;
-	}
-	switch (id) {
+    while ((button = popdeferstack()) != NULL) {
+	switch (button->id) {
 	  case Button_Blue:
 	    addsoundeffect(SND_BUTTON_PUSHED);
 	    turntanks(NULL);
@@ -1524,15 +1547,15 @@ static void handlebuttons(void)
 	    togglewalls();
 	    break;
 	  case Button_Red:
-	    activatecloner(pos);
+	    activatecloner(button->pos);
 	    addsoundeffect(SND_BUTTON_PUSHED);
 	    break;
 	  case Button_Brown:
-	    springtrap(pos);
+	    springtrap(button->pos);
 	    addsoundeffect(SND_BUTTON_PUSHED);
 	    break;
 	  default:
-	    warn("Fooey! Tile %02X is not a button!", id);
+	    warn("Fooey! Tile %02X is not a button!", button->id);
 	    break;
 	}
     }
@@ -1783,28 +1806,29 @@ static void endmovement(creature *cr, int dir, int flags)
     switch (floor) {
       case Button_Blue:
 	if (cr->state & CS_DEFERPUSH)
-	    tile->state |= FS_BUTTONDOWN;
+	    pushdeferstack(newpos, floor);
 	else
 	    turntanks(cr);
 	addsoundeffect(SND_BUTTON_PUSHED);
 	break;
       case Button_Green:
 	if (cr->state & CS_DEFERPUSH)
-	    tile->state |= FS_BUTTONDOWN;
+	    pushdeferstack(newpos, floor);
 	else
 	    togglewalls();
 	break;
       case Button_Red:
-	if (cr->state & CS_DEFERPUSH &&
-		!(cellat(clonerfrombutton(newpos))->bot.state & FS_CLONING))
-	    tile->state |= FS_BUTTONDOWN;
+	if (cellat(clonerfrombutton(newpos))->bot.state & FS_CLONING)
+	    break;
+	if (cr->state & CS_DEFERPUSH)
+	    pushdeferstack(newpos, floor);
 	else
 	    activatecloner(newpos);
 	addsoundeffect(SND_BUTTON_PUSHED);
 	break;
       case Button_Brown:
 	if (cr->state & CS_DEFERPUSH)
-	    tile->state |= FS_BUTTONDOWN;
+	    pushdeferstack(newpos, floor);
 	else
 	    springtrap(newpos);
 	addsoundeffect(SND_BUTTON_PUSHED);
@@ -1886,7 +1910,7 @@ static int advancecreature(creature *cr, int dir, int flags)
     }
 
     endmovement(cr, dir, flags);
-    if (!isblock(cr->id) || cellat(cr->pos)->bot.id == CloneMachine)
+    if (!(cr->state & CS_DEFERPUSH))
 	handlebuttons();
 
     return TRUE;
