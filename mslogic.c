@@ -43,7 +43,7 @@ struct msstate {
 
 /* Forward declaration of a central function.
  */
-static int advancecreature(creature *cr, int dir, int flags);
+static int advancecreature(creature *cr, int dir);
 
 /* The most recently used stepping phase value.
  */
@@ -964,7 +964,7 @@ static int pushblock(int pos, int dir, int flags)
 	cellat(pos)->bot.id = Empty;
     if (!(flags & CMM_NODEFERBUTTONS))
 	cr->state |= CS_DEFERPUSH;
-    r = advancecreature(cr, dir, flags);
+    r = advancecreature(cr, dir);
     if (!(flags & CMM_NODEFERBUTTONS))
 	cr->state &= ~CS_DEFERPUSH;
     if (!r)
@@ -1466,7 +1466,7 @@ static void activatecloner(int buttonpos)
     if (creatureid(tileid) == Block) {
 	cr = lookupblock(pos);
 	if (cr->dir != NIL)
-	    advancecreature(cr, cr->dir, 0);
+	    advancecreature(cr, cr->dir);
     } else if (creatureid(tileid) == IceBlock) {
 	if (cellat(pos)->bot.state & FS_CLONING)
 	    return;
@@ -1474,7 +1474,7 @@ static void activatecloner(int buttonpos)
 	if (cr->dir != NIL) {
 	    if (cellat(pos)->bot.id == CloneMachine)
 		cellat(pos)->bot.state |= FS_CLONING;
-	    advancecreature(cr, cr->dir, 0);
+	    advancecreature(cr, cr->dir);
 	    if (cellat(pos)->bot.id == CloneMachine)
 		cellat(pos)->bot.state &= ~FS_CLONING;
 	}
@@ -1569,14 +1569,14 @@ static void handlebuttons(void)
  * Return FALSE if the creature cannot initiate the indicated move
  * (side effects may still occur).
  */
-static int startmovement(creature *cr, int dir, int flags)
+static int startmovement(creature *cr, int dir)
 {
     int	floor;
 
     _assert(dir != NIL);
 
     floor = cellat(cr->pos)->bot.id;
-    if (!canmakemove(cr, dir, flags)) {
+    if (!canmakemove(cr, dir, 0)) {
 	if (cr->id == Chip || (floor != Beartrap && floor != CloneMachine
 						 && !(cr->state & CS_SLIP))) {
 	    cr->dir = dir;
@@ -1602,7 +1602,7 @@ static int startmovement(creature *cr, int dir, int flags)
  * is also the only place where a creature can be added to the slip
  * list.
  */
-static void endmovement(creature *cr, int dir, int flags)
+static void endmovement(creature *cr, int dir)
 {
     static int const delta[] = { 0, -CXGRID, -1, 0, +CXGRID, 0, 0, 0, +1 };
     mapcell    *cell;
@@ -1735,11 +1735,8 @@ static void endmovement(creature *cr, int dir, int flags)
 	    addsoundeffect(SND_BOMB_EXPLODES);
 	    break;
 	  case IceBlock_Static:
-	    {
-	    creature *cr2 = lookupblock(newpos);
-	    endmovement(cr2, dir, flags);
+	    endmovement(lookupblock(newpos), dir);
 	    break;
-	    }
 	  case Teleport:
 	    if (!(tile->state & FS_BROKEN))
 		newpos = teleportcreature(cr, newpos);
@@ -1892,7 +1889,7 @@ static void endmovement(creature *cr, int dir, int flags)
 
 /* Move the given creature in the given direction.
  */
-static int advancecreature(creature *cr, int dir, int flags)
+static int advancecreature(creature *cr, int dir)
 {
     if (dir == NIL)
 	return TRUE;
@@ -1900,7 +1897,7 @@ static int advancecreature(creature *cr, int dir, int flags)
     if (cr->id == Chip)
 	chipwait() = 0;
 
-    if (!startmovement(cr, dir, flags)) {
+    if (!startmovement(cr, dir)) {
 	if (cr->id == Chip) {
 	    addsoundeffect(SND_CANT_MOVE);
 	    resetbuttons();
@@ -1909,7 +1906,7 @@ static int advancecreature(creature *cr, int dir, int flags)
 	return FALSE;
     }
 
-    endmovement(cr, dir, flags);
+    endmovement(cr, dir);
     if (!(cr->state & CS_DEFERPUSH))
 	handlebuttons();
 
@@ -1951,7 +1948,7 @@ static void floormovements(void)
 	slipdir = getslipdir(cr);
 	if (slipdir == NIL)
 	    continue;
-	if (advancecreature(cr, slipdir, 0)) {
+	if (advancecreature(cr, slipdir)) {
 	    if (cr->id == Chip) {
 		cr->state &= ~CS_HASMOVED;
 		lastslipdir() = slipdir;
@@ -1960,7 +1957,7 @@ static void floormovements(void)
 	    floor = cellat(cr->pos)->bot.id;
 	    if (isice(floor) || (floor == Teleport && cr->id == Chip)) {
 		slipdir = icewallturn(floor, back(slipdir));
-		if (advancecreature(cr, slipdir, 0)) {
+		if (advancecreature(cr, slipdir)) {
 		    if (cr->id == Chip)
 			cr->state &= ~CS_HASMOVED;
 		}
@@ -2306,7 +2303,7 @@ static int advancegame(gamelogic *logic)
 		continue;
 	    choosemove(cr);
 	    if (cr->tdir != NIL)
-		advancecreature(cr, cr->tdir, 0);
+		advancecreature(cr, cr->tdir);
 	}
 	if ((r = checkforending()))
 	    goto done;
@@ -2333,7 +2330,7 @@ static int advancegame(gamelogic *logic)
     cr = getchip();
     choosemove(cr);
     if (cr->tdir != NIL) {
-	if (advancecreature(cr, cr->tdir, 0))
+	if (advancecreature(cr, cr->tdir))
 	    if ((r = checkforending()))
 		goto done;
 	cr->state |= CS_HASMOVED;
