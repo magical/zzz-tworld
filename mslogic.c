@@ -1284,6 +1284,9 @@ static void choosecreaturemove(creature *cr)
     cr->tdir = pdir;
 }
 
+/* forward */
+static void resetbuttons(void);
+
 /* Select a direction for Chip to move towards the goal position.
  */
 static int chipmovetogoalpos(void)
@@ -1313,9 +1316,14 @@ static int chipmovetogoalpos(void)
 	d1 = d2;
 	d2 = dir;
     }
-    if (d1 != NIL && d2 != NIL)
-	dir = canmakemove(cr, d1, 0) ? d1 : d2;
-    else
+    if (d1 != NIL && d2 != NIL) {
+	if (canmakemove(cr, d1, 0))
+	    dir = d1;
+	else {
+	    dir = d2;
+	    resetbuttons();
+	}
+    } else
 	dir = d2 == NIL ? d1 : d2;
 
     return dir;
@@ -1902,7 +1910,8 @@ static int advancecreature(creature *cr, int dir)
 	    addsoundeffect(SND_CANT_MOVE);
 	    resetbuttons();
 	    cancelgoal();
-	}
+	} else if (!(cr->state & CS_DEFERPUSH))
+	    handlebuttons();
 	return FALSE;
     }
 
