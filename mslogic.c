@@ -1449,6 +1449,8 @@ static void choosemove(creature *cr)
 {
     if (cr->id == Chip) {
 	choosechipmove(cr, cr->state & CS_SLIP);
+    } else if (cr->id == Swimming_Chip) {
+	;
     } else {
 	if (cr->state & CS_SLIP)
 	    cr->tdir = NIL;
