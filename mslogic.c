@@ -933,6 +933,7 @@ static struct { unsigned char chip, block, creature; } const movelaws[] = {
 #define	CMM_NOPUSHING		0x0008
 #define	CMM_TELEPORTPUSH	0x0010
 #define	CMM_NODEFERBUTTONS	0x0020
+#define CMM_RECHECK		0x0040
 
 /* Move a block at the given position forward in the given direction.
  * FALSE is returned if the block cannot be pushed.
@@ -960,8 +961,6 @@ static int pushblock(int pos, int dir, int flags)
     if (flags & CMM_NOPUSHING)
 	return FALSE;
 
-    if (!(flags & CMM_TELEPORTPUSH) && (cellat(pos)->bot.id == Block_Static || cellat(pos)->bot.id == IceBlock_Static))
-	cellat(pos)->bot.id = Empty;
     if (!(flags & CMM_NODEFERBUTTONS))
 	cr->state |= CS_DEFERPUSH;
     r = advancecreature(cr, dir);
@@ -1035,25 +1034,15 @@ static int canmakemove(creature const *cr, int dir, int flags)
 		getfloorat(to)->id = Wall;
 	    return FALSE;
 	}
-	if (floor == Block_Static) {
-	    if (!pushblock(to, dir, flags))
+	if (floor == Block_Static || floor == IceBlock_Static) {
+	    if ((flags & CMM_RECHECK) && !(flags & CMM_TELEPORTPUSH))
+		/*return TRUE*/;
+	    else if (!pushblock(to, dir, flags))
 		return FALSE;
-	    else if (flags & CMM_NOPUSHING)
-		return TRUE;
-	    if ((flags & CMM_TELEPORTPUSH) && floorat(to) == Block_Static
-					   && cellat(to)->bot.id == Empty)
-		    return TRUE;
-	    return canmakemove(cr, dir, flags | CMM_NOPUSHING);
-	}
-	if (floor == IceBlock_Static) {
-	    if (!pushblock(to, dir, flags))
-		return FALSE;
-	    else if (flags & CMM_NOPUSHING)
-		return TRUE;
-	    if ((flags & CMM_TELEPORTPUSH) && floorat(to) == IceBlock_Static
-					   && cellat(to)->bot.id == Empty)
-		    return TRUE;
-	    return canmakemove(cr, dir, flags | CMM_NOPUSHING);
+	    else if (flags & CMM_TELEPORTPUSH)
+		/*return TRUE*/;
+	    else
+		return canmakemove(cr, dir, flags | CMM_NOPUSHING | CMM_RECHECK); 
 	}
     } else if (cr->id == Block) {
 	floor = cellat(to)->top.id;
@@ -1065,24 +1054,20 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	    return FALSE;
     } else if (cr->id == IceBlock) {
 	floor = cellat(to)->top.id;
-	if ((flags & CMM_TELEPORTPUSH) && floor == IceBlock_Static) {
-	    return FALSE;
-	}
 	if (iscreature(floor)) {
 	    id = creatureid(floor);
 	    return id == Chip || id == Swimming_Chip;
 	}
 	if (floor == IceBlock_Static) {
+	    if (flags & CMM_TELEPORTPUSH)
+		return FALSE;
 	    if (!pushblock(to, dir, flags))
 		return FALSE;
-	    else if (flags & CMM_NOPUSHING)
-		return TRUE;
-	    return canmakemove(cr, dir, flags | CMM_NOPUSHING);
+	    return canmakemove(cr, dir, flags | CMM_NOPUSHING | CMM_RECHECK);
 	}
-	if (floor == Dirt) {
-	    return TRUE;
-	}
-	if (!(movelaws[floor].block & dir))
+	if (floor == Dirt)
+	    /*return TRUE*/;
+	else if (!(movelaws[floor].block & dir))
 	    return FALSE;
     } else {
 	floor = cellat(to)->top.id;
@@ -1107,9 +1092,7 @@ static int canmakemove(creature const *cr, int dir, int flags)
 		//return FALSE; // Ice Blocks block clone machines
 	    if (!pushblock(to, dir, flags))
 		return FALSE;
-	    else if (flags & CMM_NOPUSHING)
-		return TRUE;
-	    return canmakemove(cr, dir, flags | CMM_NOPUSHING);
+	    return canmakemove(cr, dir, flags | CMM_NOPUSHING | CMM_RECHECK);
 	}
 	if (!(movelaws[floor].creature & dir))
 	    return FALSE;
@@ -1643,6 +1626,10 @@ static void endmovement(creature *cr, int dir)
 		chipstatus() = CHIP_BURNED;
 	    break;
 	  case Dirt:
+	    poptile(newpos);
+	    break;
+	  case Block_Static:
+	  case IceBlock_Static:
 	    poptile(newpos);
 	    break;
 	  case BlueWall_Fake:
