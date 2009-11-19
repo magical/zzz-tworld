@@ -489,7 +489,9 @@ static int floorat(int pos)
 			     && !iscreature(cell->top.id))
 	return cell->top.id;
     if (!iskey(cell->bot.id) && !isboots(cell->bot.id)
-			     && !iscreature(cell->bot.id))
+			     && !iscreature(cell->bot.id)
+			     && cell->bot.id != Block_Static
+			     && cell->bot.id != IceBlock_Static)
 	return cell->bot.id;
     return Empty;
 }
