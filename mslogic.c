@@ -489,9 +489,7 @@ static int floorat(int pos)
 			     && !iscreature(cell->top.id))
 	return cell->top.id;
     if (!iskey(cell->bot.id) && !isboots(cell->bot.id)
-			     && !iscreature(cell->bot.id)
-			     && cell->bot.id != Block_Static
-			     && cell->bot.id != IceBlock_Static)
+			     && !iscreature(cell->bot.id))
 	return cell->bot.id;
     return Empty;
 }
@@ -935,7 +933,6 @@ static struct { unsigned char chip, block, creature; } const movelaws[] = {
 #define	CMM_NOPUSHING		0x0008
 #define	CMM_TELEPORTPUSH	0x0010
 #define	CMM_NODEFERBUTTONS	0x0020
-#define CMM_RECHECK		0x0040
 
 /* Move a block at the given position forward in the given direction.
  * FALSE is returned if the block cannot be pushed.
@@ -1019,6 +1016,13 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	return FALSE;
 
     if (cr->id == Chip) {
+	/* If the top tile is a block, push it. */
+	floor = cellat(to)->top.id;
+	if (floor == Block_Static || floor == IceBlock_Static) {
+	    if (!pushblock(to, dir, flags))
+		return FALSE;
+	}
+	/* Now check the floor tile */
 	floor = floorat(to);
 	if (!(movelaws[floor].chip & dir))
 	    return FALSE;
@@ -1036,16 +1040,6 @@ static int canmakemove(creature const *cr, int dir, int flags)
 		getfloorat(to)->id = Wall;
 	    return FALSE;
 	}
-	if (floor == Block_Static || floor == IceBlock_Static) {
-	    if ((flags & CMM_RECHECK) && !(flags & CMM_TELEPORTPUSH))
-		/*return TRUE*/;
-	    else if (!pushblock(to, dir, flags))
-		return FALSE;
-	    else if (flags & CMM_TELEPORTPUSH)
-		/*return TRUE*/;
-	    else
-		return canmakemove(cr, dir, flags | CMM_NOPUSHING | CMM_RECHECK); 
-	}
     } else if (cr->id == Block) {
 	floor = cellat(to)->top.id;
 	if (iscreature(floor)) {
@@ -1056,16 +1050,18 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	    return FALSE;
     } else if (cr->id == IceBlock) {
 	floor = cellat(to)->top.id;
+	if (floor == IceBlock_Static) {
+	    // ice blocks can't push other ice blocks when teleporting
+	    if (flags & CMM_TELEPORTPUSH)
+		return FALSE;
+
+	    if (!pushblock(to, dir, flags))
+		return FALSE;
+	}
+	floor = cellat(to)->top.id;
 	if (iscreature(floor)) {
 	    id = creatureid(floor);
 	    return id == Chip || id == Swimming_Chip;
-	}
-	if (floor == IceBlock_Static) {
-	    if (flags & CMM_TELEPORTPUSH)
-		return FALSE;
-	    if (!pushblock(to, dir, flags))
-		return FALSE;
-	    return canmakemove(cr, dir, flags | CMM_NOPUSHING | CMM_RECHECK);
 	}
 	if (floor == Dirt)
 	    /*return TRUE*/;
@@ -1094,7 +1090,7 @@ static int canmakemove(creature const *cr, int dir, int flags)
 		//return FALSE; // Ice Blocks block clone machines
 	    if (!pushblock(to, dir, flags))
 		return FALSE;
-	    return canmakemove(cr, dir, flags | CMM_NOPUSHING | CMM_RECHECK);
+	    return canmakemove(cr, dir, flags | CMM_NOPUSHING);
 	}
 	if (!(movelaws[floor].creature & dir))
 	    return FALSE;
