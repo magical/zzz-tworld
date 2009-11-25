@@ -853,7 +853,7 @@ static struct { unsigned char chip, block, creature; } const movelaws[] = {
     /* IceWall_Southwest */	{ NORTH | EAST, NORTH | EAST, NORTH | EAST },
     /* IceWall_Southeast */	{ NORTH | WEST, NORTH | WEST, NORTH | WEST },
     /* Gravel */		{ NWSE, NWSE, 0 },
-    /* Dirt */			{ NWSE, 0, 0 },
+    /* Dirt */			{ NWSE, NWSE, 0 },
     /* Water */			{ NWSE, NWSE, NWSE },
     /* Fire */			{ NWSE, NWSE, NWSE },
     /* Bomb */			{ NWSE, NWSE, NWSE },
@@ -1048,6 +1048,8 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	}
 	if (!(movelaws[floor].block & dir))
 	    return FALSE;
+	if (floor == Dirt)
+	    return FALSE;
     } else if (cr->id == IceBlock) {
 	floor = cellat(to)->top.id;
 	if (floor == IceBlock_Static) {
@@ -1063,9 +1065,7 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	    id = creatureid(floor);
 	    return id == Chip || id == Swimming_Chip;
 	}
-	if (floor == Dirt)
-	    /*return TRUE*/;
-	else if (!(movelaws[floor].block & dir))
+	if (!(movelaws[floor].block & dir))
 	    return FALSE;
     } else {
 	floor = cellat(to)->top.id;
