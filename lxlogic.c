@@ -567,7 +567,7 @@ static struct { unsigned char chip, block, creature; } const movelaws[] = {
     /* Gravel */
     { ALL_IN_OUT, ALL_IN_OUT, ALL_OUT },
     /* Dirt */
-    { ALL_IN_OUT, ALL_OUT, ALL_OUT },
+    { ALL_IN_OUT, ALL_IN_OUT, ALL_OUT },
     /* Water */
     { ALL_IN_OUT, ALL_IN_OUT, ALL_IN_OUT },
     /* Fire */
@@ -674,7 +674,7 @@ static struct { unsigned char chip, block, creature; } const movelaws[] = {
     { 0, 0, 0 },
     /* Overlay_Buffer */
     { 0, 0, 0 },
-    /* Floor_Reserved2 */
+    /* IceBlock_Static */
     { 0, 0, 0 },
     /* Floor_Reserved1 */
     { 0, 0, 0 }
@@ -703,7 +703,7 @@ static struct { unsigned char chip, block, creature; } const movelaws[] = {
  */
 static int canpushblock(creature *block, int dir, int flags)
 {
-    _assert(block && block->id == Block);
+    _assert(block && isblock(block->id));
     _assert(floorat(block->pos) != CloneMachine);
     _assert(dir != NIL);
 
@@ -781,7 +781,7 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	if (ismarkedanimated(to))
 	    return FALSE;
 	other = lookupcreature(to, FALSE);
-	if (other && other->id == Block) {
+	if (other && isblock(other->id)) {
 	    if (!canpushblock(other, dir, flags & ~CMM_RELEASING))
 		return FALSE;
 	}
@@ -790,7 +790,7 @@ static int canmakemove(creature const *cr, int dir, int flags)
 		floorat(to) = Wall;
 	    return FALSE;
 	}
-    } else if (cr->id == Block) {
+    } else if (isblock(cr->id)) {
 	if (cr->moving > 0)
 	    return FALSE;
 	if (!(movelaws[floorfrom].block & DIR_OUT(dir)))
@@ -802,6 +802,13 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	}
 	if (!(movelaws[floorto].block & DIR_IN(dir)))
 	    return FALSE;
+	if (floorto == Dirt && cr->id == Block)
+	    return FALSE;
+	if (cr->id == IceBlock) {
+	    other = lookupcreature(to, FALSE);
+	    if (other && other->id == IceBlock)
+		return canpushblock(other, dir, flags & ~CMM_RELEASING);
+	}
 	if (islocationclaimed(to))
 	    return FALSE;
 	if (flags & CMM_CLEARANIMATIONS)
@@ -817,6 +824,11 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	}
 	if (!(movelaws[floorto].creature & DIR_IN(dir)))
 	    return FALSE;
+	if (cr->id == Tank || cr->id == Teeth) {
+	    other = lookupcreature(to, FALSE);
+	    if (other && other->id == IceBlock)
+		return canpushblock(other, dir, flags & ~CMM_RELEASING);
+	}
 	if (islocationclaimed(to))
 	    return FALSE;
 	if (floorto == Fire && cr->id != Fireball)
@@ -848,7 +860,7 @@ static void choosecreaturemove(creature *cr)
 	return;
 
     cr->tdir = NIL;
-    if (cr->id == Block)
+    if (isblock(cr->id))
 	return;
     if (getfdir(cr) != NIL)
 	return;
@@ -1239,7 +1251,7 @@ static int startmovement(creature *cr, int releasing)
 
     if (cr->id != Chip) {
 	removeclaim(cr->pos);
-	if (cr->id != Block && cr->pos == chiptopos())
+	if (!isblock(cr->id) && cr->pos == chiptopos())
 	    chiptocr() = cr;
     } else if (chiptocr() && !chiptocr()->hidden) {
 	chiptocr()->moving = 8;
@@ -1395,6 +1407,27 @@ static int endmovement(creature *cr)
 	switch (floor) {
 	  case Water:
 	    floorat(cr->pos) = Dirt;
+	    addsoundeffect(SND_WATER_SPLASH);
+	    removecreature(cr, Water_Splash);
+	    survived = FALSE;
+	    break;
+	  case Key_Blue:
+	    floorat(cr->pos) = Empty;
+	    break;
+	}
+    } else if (cr->id == IceBlock) {
+	switch (floor) {
+	  case Dirt:
+	    floorat(cr->pos) = Empty;
+	    break;
+	  case Fire:
+	    floorat(cr->pos) = Water;
+	    addsoundeffect(SND_WATER_SPLASH);
+	    removecreature(cr, Water_Splash);
+	    survived = FALSE;
+	    break;
+	  case Water:
+	    floorat(cr->pos) = Ice;
 	    addsoundeffect(SND_WATER_SPLASH);
 	    removecreature(cr, Water_Splash);
 	    survived = FALSE;
@@ -1763,10 +1796,18 @@ static int initgame(gamelogic *logic)
 
     n = -1;
     for (pos = 0, cell = state->map ; pos < CXGRID * CYGRID ; ++pos, ++cell) {
+	if (cell->top.id == IceBlock_Static && creatureid(cell->bot.id) == Block) {
+	    cell->top.id = crtile(IceBlock, creaturedirid(cell->bot.id));
+	    cell->bot.id = CloneMachine;
+	}
 	if (cell->top.id == Block_Static)
 	    cell->top.id = crtile(Block, NORTH);
 	if (cell->bot.id == Block_Static)
 	    cell->bot.id = crtile(Block, NORTH);
+	if (cell->top.id == IceBlock_Static)
+	    cell->top.id = crtile(IceBlock, NORTH);
+	if (cell->bot.id == IceBlock_Static)
+	    cell->bot.id = crtile(IceBlock, NORTH);
 	if (ismsspecial(cell->top.id) && cell->top.id != Exited_Chip) {
 	    cell->top.id = Wall;
 	    if (pedanticmode)
