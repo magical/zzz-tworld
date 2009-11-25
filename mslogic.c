@@ -1069,6 +1069,13 @@ static int canmakemove(creature const *cr, int dir, int flags)
 	    return FALSE;
     } else {
 	floor = cellat(to)->top.id;
+	if (floor == IceBlock_Static && (cr->id == Teeth || (cr->id == Tank))) {
+	    if (flags & CMM_CLONECANTBLOCK)
+		return FALSE; // Ice Blocks block clone machines
+	    if (!pushblock(to, dir, flags))
+		return FALSE;
+	}
+	floor = cellat(to)->top.id;
 	if (iscreature(floor)) {
 	    id = creatureid(floor);
 	    if (id == Chip || id == Swimming_Chip) {
@@ -1084,13 +1091,6 @@ static int canmakemove(creature const *cr, int dir, int flags)
 				&& floor == crtile(cr->id, cr->dir))
 		return TRUE;
 	    return FALSE;
-	}
-	if (floor == IceBlock_Static && (cr->id == Teeth || (cr->id == Tank))) {
-	    //if (flags & CMM_CLONECANTBLOCK)
-		//return FALSE; // Ice Blocks block clone machines
-	    if (!pushblock(to, dir, flags))
-		return FALSE;
-	    return canmakemove(cr, dir, flags | CMM_NOPUSHING);
 	}
 	if (!(movelaws[floor].creature & dir))
 	    return FALSE;
@@ -1476,7 +1476,7 @@ static void activatecloner(int buttonpos)
 	dummy.id = creatureid(tileid);
 	dummy.dir = creaturedirid(tileid);
 	dummy.pos = pos;
-	if (!canmakemove(&dummy, dummy.dir, CMM_CLONECANTBLOCK | CMM_NOPUSHING))
+	if (!canmakemove(&dummy, dummy.dir, CMM_CLONECANTBLOCK))
 	    return;
 	cr = awakencreature(pos);
 	if (!cr)
